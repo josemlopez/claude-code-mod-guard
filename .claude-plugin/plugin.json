@@ -1,0 +1,7 @@
+{
+  "name": "mod-guard",
+  "version": "0.1.0",
+  "description": "A guard for Claude Code mods: before any other mod loads, it reads its code, asks a model to review it, refuses what it doesn't trust, and blocks scripts that change after the review.",
+  "author": { "name": "Jose López" },
+  "license": "MIT"
+}

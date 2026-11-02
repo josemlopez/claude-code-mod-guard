@@ -9,6 +9,7 @@
 // The guard fails closed: if the review can't run, the mod doesn't load.
 
 const MODEL = 'opus'                 // the reviewer; any alias or model id Claude Code accepts
+const EFFORT = 'high'                // reasoning effort for the review
 const MAX_FILES = 200
 const MAX_BYTES = 350000             // total source sent to the reviewer
 const SKIP = new Set(['.git', 'node_modules', '.DS_Store'])
@@ -71,14 +72,20 @@ async function review($, e) {
     'Declared by the scanner: hooks ' + JSON.stringify(e.uses.events || []) +
     '; calls ' + JSON.stringify(e.uses.calls || []) + '\n\n' + body
 
-  const raw = await $.model.complete({ model: MODEL, system: SYSTEM, prompt, maxTokens: 1500 })
+  // the reviewer sometimes comes back empty; ask again, up to five times
+  let raw = null
+  for (let i = 0; i < 5 && !parseVerdict(raw); i++) {
+    raw = await $.model.complete({ model: MODEL, effort: EFFORT, system: SYSTEM, prompt, maxTokens: 16000 })
+  }
+  if (!parseVerdict(raw)) $.ui.log('mod-guard: reviewer reply ' + JSON.stringify(raw).slice(0, 400), { to: 'debug' })
   const v = parseVerdict(raw) || { decision: 'refuse', risk: 'high', reasons: ['the reviewer gave no readable verdict'] }
   const verdict = {
     tree, decision: v.decision === 'allow' ? 'allow' : 'refuse', risk: v.risk || 'unknown',
     reasons: Array.isArray(v.reasons) ? v.reasons.slice(0, 6) : [], at: new Date(await $.clock.now()).toISOString(),
     root: e.root, files: Object.fromEntries(files.map(f => [f.path, f.hash])),
   }
-  await $.store.set('verdict:' + e.provenance, verdict)
+  // a verdict the reviewer never gave is not cached: the next load asks again
+  if (parseVerdict(raw)) await $.store.set('verdict:' + e.provenance, verdict)
   return verdict
 }
 

@@ -24,7 +24,7 @@ does, and it can't see a script the mod runs later.
 | Another mod is about to load (`plugin.register`) | Reads every file in that plugin's folder, hashes them, and sends the code to a model (Opus by default) with a security review prompt. If the answer is anything but `allow`, the mod doesn't load and the reason shows in the transcript and the debug log |
 | The same mod loads again, unchanged | Uses the cached verdict (keyed by the hash of the whole folder). A single changed file means a new review |
 | A reviewed mod starts a program (`process.run`, `process.spawn`) | If the command line names a file inside that mod's folder, its hash has to match the one reviewed. A script edited after the review is denied |
-| The review or the check itself fails | Fails closed: the mod doesn't load, the program doesn't start |
+| The review or the check itself fails | Fails closed: the mod doesn't load, the program doesn't start. An empty answer from the reviewer is asked again up to five times; if it stays empty, the mod is refused for this session and reviewed again next time (nothing is cached) |
 
 Tested on Claude Code 2.1.316:
 
@@ -76,7 +76,7 @@ Keep `sec-default@builtin` in the list, or you remove Claude Code's built-in gua
 
 ## Configure
 
-At the top of `hooks/register.js`: `MODEL` (any alias or model id Claude Code accepts), `MAX_FILES` and `MAX_BYTES`
+At the top of `hooks/register.js`: `MODEL` (any alias or model id Claude Code accepts; `opus` by default), `EFFORT` (`high` by default), `MAX_FILES` and `MAX_BYTES`
 (how much code goes to the reviewer), and the review prompt in `SYSTEM`.
 
 ## License
